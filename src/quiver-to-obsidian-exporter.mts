@@ -3,6 +3,7 @@ import fs from 'fs-extra'
 import pathModule from 'path'
 import * as cliProgress from 'cli-progress'
 import chalk from 'chalk'
+import dayjs from "dayjs";
 
 import { getLogger } from './logger.mjs';
 import './extensions/String+Path.mjs';
@@ -138,8 +139,26 @@ function outputNoteAndCopyResources(srcInfo: any, destInfo: any) {
 
   fs.ensureDirSync(obsidianNoteDirPath)
   fs.ensureDirSync(obsidianAttachmentFolderPath)
+
+  var baseTitle = title;
+  if (baseTitle === "Untitled Note") {
+    baseTitle = dayjs(quiverMeta.created_at * 1000).format('YYYY-MM-DD')
+  }
   
-  const destFilePath = pathModule.join(obsidianNoteDirPath, `${title}.md`)
+  let destFilePath = pathModule.join(obsidianNoteDirPath, `${baseTitle}.md`)
+  let counter = 1;
+
+  // Check if the file already exists and find a unique name if it does
+  while (fs.pathExistsSync(destFilePath)) {
+    const newTitle = `${baseTitle} (${counter})`;
+    destFilePath = pathModule.join(obsidianNoteDirPath, `${newTitle}.md`);
+    counter++;
+  }
+
+  // If the filename was changed, log it
+  if (pathModule.basename(destFilePath, '.md') !== baseTitle) {
+    logger.info(`Duplicate filename: "${title}.md" already exists. Saving as "${pathModule.basename(destFilePath)}" instead.`);
+  }
 
   try {
     fs.writeFileSync(destFilePath, content)
